@@ -32,7 +32,7 @@ export default function SignUpView() {
 
       {/* Sign-in link */}
       <Typography variant="body1" sx={{ mb: 6 }}>
-        Už máte účet? <a href="/auth/prihlasenie">Prihláste sa</a>
+        Prečitaj si GDPR pred registrovanim <a href="/auth/prihlasenie">GDPR</a>
       </Typography>
 
       {/* Google Sign Up */}

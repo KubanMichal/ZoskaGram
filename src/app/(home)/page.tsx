@@ -8,6 +8,7 @@ import NonAuthPageView from '@/sections/NonAuthHomeView';
 import AuthPageView from '@/sections/AuthHomeView';
 
 
+
 export const metadata = { title: "Domov | Kolcobos" };
 
 export default async function Home() {

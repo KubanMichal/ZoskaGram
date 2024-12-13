@@ -43,8 +43,7 @@ export default function Navbar() {
 
   const nonAuthPaths = [
     { label: "Domov", value: "/", icon: <HomeIcon /> },
-    { label: "O mne", value: "/o-mne", icon: <AccessibilityIcon /> },
-    { label: "GDPR", value: "/gdpr", icon: <ArticleIcon />},
+    { label: "O mne", value: "/o-mne", icon: <AccessibilityIcon /> }, 
     { label: "Registrácia", value: "/auth/registracia", icon: <AppRegistrationIcon /> },
     { label: "Prihlásenie", value: "/auth/prihlasenie", icon: <LoginIcon /> },
   ];

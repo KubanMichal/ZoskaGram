@@ -10,10 +10,8 @@ export default function AuthPageView({ session }: { session: Session }) {
 
   return (
     <Container>
-      <Typography> Domovská stránka - prihlásený user</Typography>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Vitajte, {session?.user?.name || "užívateľ"}!
-      </Typography>
+      <Typography> Prispevky </Typography>
+      
 
 
       {/* <Box sx={{ mt: 2 }}>
