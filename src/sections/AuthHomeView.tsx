@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 
 import { Session } from "next-auth";
 
-export default function AuthPageView({ session }: { session: Session }) {
+export default function AuthPageView({}: { session: Session }) {
 
   return (
     <Container>
