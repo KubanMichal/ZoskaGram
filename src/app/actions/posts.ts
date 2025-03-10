@@ -4,13 +4,26 @@
 
 // Import Prisma client
 import { prisma } from "@/app/api/auth/[...nextauth]/prisma";
+import type { Prisma } from "@prisma/client";
+
+type PostWithRelations = Prisma.PostGetPayload<{
+  include: {
+    user: true;
+    likes: true;
+    comments: true;
+  };
+}>;
 
 // Fetch all posts
-export const fetchPosts = async () => {
+export const fetchPosts = async (): Promise<PostWithRelations[]> => {
   try {
     const posts = await prisma.post.findMany({
       orderBy: { createdAt: "desc" },
-      include: { user: true }, // Include user who created the post
+      include: {
+        user: true,
+        likes: true,
+        comments: true,
+      },
     });
 
     return posts;
@@ -21,11 +34,16 @@ export const fetchPosts = async () => {
 };
 
 // Fetch posts by a specific user ID
-export const fetchPostsByUserId = async (userId: string) => {
+export const fetchPostsByUserId = async (userId: string): Promise<PostWithRelations[]> => {
   try {
     const posts = await prisma.post.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
+      include: {
+        user: true,
+        likes: true,
+        comments: true,
+      },
     });
 
     return posts;
@@ -36,13 +54,18 @@ export const fetchPostsByUserId = async (userId: string) => {
 };
 
 // Create a new post
-export const createPost = async (userId: string, imageUrl: string, caption?: string) => {
+export const createPost = async (userId: string, imageUrl: string, caption?: string): Promise<PostWithRelations> => {
   try {
     const newPost = await prisma.post.create({
       data: {
         userId,
         imageUrl,
         caption,
+      },
+      include: {
+        user: true,
+        likes: true,
+        comments: true,
       },
     });
 
