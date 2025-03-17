@@ -1,6 +1,8 @@
 "use server";
 
 import { prisma } from "@/app/api/auth/[...nextauth]/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 
 export const createComment = async (postId: string, userId: string, content: string) => {
   try {
@@ -87,4 +89,38 @@ export const deleteComment = async (commentId: string, userId: string) => {
     console.error("Error deleting comment:", error);
     throw new Error("Could not delete comment");
   }
-}; 
+};
+
+export async function addComment(postId: string, content: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error('Not authenticated');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email }
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const comment = await prisma.comment.create({
+    data: {
+      content,
+      postId,
+      userId: user.id,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+        }
+      }
+    }
+  });
+
+  return comment;
+} 

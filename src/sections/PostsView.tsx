@@ -13,9 +13,13 @@ import CardContent from "@mui/material/CardContent";
 import CardActions from "@mui/material/CardActions";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
+import TextField from "@mui/material/TextField";
+import IconButton from "@mui/material/IconButton";
+import SendIcon from "@mui/icons-material/Send";
 
 // Server action import
 import { fetchPosts } from "@/app/actions/posts";
+import { addComment } from "@/app/actions/comments";
 import LikeButton from "@/components/LikeButton";
 import CommentButton from "@/components/CommentButton";
 import SaveButton from '@/components/SaveButton';
@@ -49,7 +53,8 @@ interface Post {
 
 const PostsView = () => {
   const [posts, setPosts] = useState<Post[]>([]);
-
+  const [newComments, setNewComments] = useState<{ [key: string]: string }>({});
+  const [submittingComment, setSubmittingComment] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     const loadPosts = async () => {
@@ -63,6 +68,24 @@ const PostsView = () => {
 
     loadPosts();
   }, []);
+
+  const handleCommentSubmit = async (postId: string) => {
+    if (!newComments[postId]?.trim()) return;
+
+    setSubmittingComment(prev => ({ ...prev, [postId]: true }));
+    try {
+      await addComment(postId, newComments[postId]);
+      setNewComments(prev => ({ ...prev, [postId]: '' }));
+      
+      // Refresh posts to show new comment
+      const fetchedPosts = await fetchPosts();
+      setPosts(fetchedPosts);
+    } catch (error) {
+      console.error("Failed to add comment:", error);
+    } finally {
+      setSubmittingComment(prev => ({ ...prev, [postId]: false }));
+    }
+  };
 
   return (
     <Container sx={{py:4}} maxWidth="md">
@@ -91,6 +114,36 @@ const PostsView = () => {
               <SaveButton postId={post.id} />
             </Box>
           </CardActions>
+          <Divider />
+          <Box sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Pridať komentár..."
+                value={newComments[post.id] || ''}
+                onChange={(e) => setNewComments(prev => ({ ...prev, [post.id]: e.target.value }))}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleCommentSubmit(post.id);
+                  }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
+              />
+              <IconButton
+                color="primary"
+                disabled={submittingComment[post.id] || !newComments[post.id]?.trim()}
+                onClick={() => handleCommentSubmit(post.id)}
+              >
+                <SendIcon />
+              </IconButton>
+            </Box>
+          </Box>
         </Card>
       ))}
     </Container>
