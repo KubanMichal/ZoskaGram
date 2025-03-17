@@ -18,6 +18,7 @@ import Divider from "@mui/material/Divider";
 import { fetchPosts } from "@/app/actions/posts";
 import LikeButton from "@/components/LikeButton";
 import CommentButton from "@/components/CommentButton";
+import SaveButton from '@/components/SaveButton';
 
 // Post interface
 interface Post {
@@ -83,9 +84,11 @@ const PostsView = () => {
           </CardContent>
           <Divider />
           <CardActions>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <LikeButton postId={post.id} initialLikeCount={post.likes.length} />
+            <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+              <LikeButton postId={post.id} initialLikeCount={post.likes.length} initialIsLiked={false} />
               <CommentButton postId={post.id} initialCommentCount={post.comments.length} />
+              <Box sx={{ flexGrow: 1 }} />
+              <SaveButton postId={post.id} />
             </Box>
           </CardActions>
         </Card>

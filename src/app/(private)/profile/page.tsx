@@ -23,15 +23,20 @@ import {
   Paper,
   IconButton,
   Tooltip,
-  Badge
+  Badge,
+  Tabs,
+  Tab
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EditIcon from '@mui/icons-material/Edit';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import EmailIcon from '@mui/icons-material/Email';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import GridViewIcon from '@mui/icons-material/GridView';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import type { User, Profile, Post } from '@prisma/client';
 import { fetchUserProfile, updateUserProfile, getUserIdByEmail } from '@/app/actions/users';
+import { getSavedPosts } from '@/app/actions/savedPosts';
 import { redirect } from 'next/navigation';
 
 type UserWithProfileAndPosts = User & {
@@ -41,10 +46,36 @@ type UserWithProfileAndPosts = User & {
 
 // Extend the Session type to include id
 
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`profile-tabpanel-${index}`}
+      aria-labelledby={`profile-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ py: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
 
 export default function Profile() {
   const { data: session, status } = useSession();
   const [user, setUser] = useState<UserWithProfileAndPosts | null>(null);
+  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
@@ -53,6 +84,7 @@ export default function Profile() {
     bio: '',
     location: ''
   });
+  const [tabValue, setTabValue] = useState(0);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -80,8 +112,13 @@ export default function Profile() {
           return;
         }
 
-        const userData = await fetchUserProfile(userId);
+        const [userData, userSavedPosts] = await Promise.all([
+          fetchUserProfile(userId),
+          getSavedPosts(userId)
+        ]);
+
         setUser(userData);
+        setSavedPosts(userSavedPosts);
         setEditForm({
           name: userData.name || '',
           bio: userData.profile?.bio || '',
@@ -126,6 +163,93 @@ export default function Profile() {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
+  const renderPosts = (posts: Post[]) => {
+    if (!posts || posts.length === 0) {
+      return (
+        <Box 
+          sx={{ 
+            textAlign: 'center',
+            py: 4,
+            bgcolor: 'action.hover',
+            borderRadius: 2
+          }}
+        >
+          <Typography color="text.secondary">
+            {tabValue === 0 ? 'Zatiaľ nemáte žiadne príspevky.' : 'Zatiaľ nemáte žiadne uložené príspevky.'}
+          </Typography>
+          {tabValue === 0 && (
+            <Button 
+              variant="contained" 
+              sx={{ mt: 2 }}
+              href="/prispevok"
+            >
+              Pridať prvý príspevok
+            </Button>
+          )}
+        </Box>
+      );
+    }
+
+    return (
+      <Grid container spacing={3}>
+        {posts.map((post) => (
+          <Grid item xs={12} sm={6} md={4} key={post.id}>
+            <Card 
+              sx={{ 
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'transform 0.2s',
+                '&:hover': {
+                  transform: 'scale(1.02)',
+                },
+              }}
+            >
+              <Box sx={{ position: 'relative', paddingTop: '100%' }}>
+                <CardMedia
+                  component="img"
+                  image={post.imageUrl}
+                  alt={post.caption || 'Post image'}
+                  sx={{ 
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5PYnLDoXpvayBuZWRvc3R1cG7DvTwvdGV4dD48L3N2Zz4='; // Simple SVG placeholder
+                    target.onerror = null;
+                  }}
+                />
+              </Box>
+              {post.caption && (
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Typography variant="body2">
+                    {post.caption}
+                  </Typography>
+                  <Typography 
+                    variant="caption" 
+                    color="text.secondary"
+                    sx={{ display: 'block', mt: 1 }}
+                  >
+                    {formatDate(post.createdAt)}
+                  </Typography>
+                </CardContent>
+              )}
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    );
   };
 
   if (status === 'loading' || loading) {
@@ -278,74 +402,32 @@ export default function Profile() {
           </Grid>
         </Paper>
 
-        {/* Posts Section */}
+        {/* Posts Section with Tabs */}
         <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-          <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-            Moje príspevky
-          </Typography>
-          <Grid container spacing={3}>
-            {user.posts.length === 0 ? (
-              <Grid item xs={12}>
-                <Box 
-                  sx={{ 
-                    textAlign: 'center',
-                    py: 4,
-                    bgcolor: 'action.hover',
-                    borderRadius: 2
-                  }}
-                >
-                  <Typography color="text.secondary">
-                    Zatiaľ nemáte žiadne príspevky.
-                  </Typography>
-                  <Button 
-                    variant="contained" 
-                    sx={{ mt: 2 }}
-                    href="/prispevok"
-                  >
-                    Pridať prvý príspevok
-                  </Button>
-                </Box>
-              </Grid>
-            ) : (
-              user.posts.map((post) => (
-                <Grid item xs={12} sm={6} md={4} key={post.id}>
-                  <Card 
-                    sx={{ 
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      transition: 'transform 0.2s',
-                      '&:hover': {
-                        transform: 'scale(1.02)',
-                      },
-                    }}
-                  >
-                    <CardMedia
-                      component="img"
-                      height="200"
-                      image={post.imageUrl}
-                      alt={post.caption || 'Post image'}
-                      sx={{ objectFit: 'cover' }}
-                    />
-                    {post.caption && (
-                      <CardContent sx={{ flexGrow: 1 }}>
-                        <Typography variant="body2">
-                          {post.caption}
-                        </Typography>
-                        <Typography 
-                          variant="caption" 
-                          color="text.secondary"
-                          sx={{ display: 'block', mt: 1 }}
-                        >
-                          {formatDate(post.createdAt)}
-                        </Typography>
-                      </CardContent>
-                    )}
-                  </Card>
-                </Grid>
-              ))
-            )}
-          </Grid>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange} 
+            centered
+            sx={{ borderBottom: 1, borderColor: 'divider' }}
+          >
+            <Tab 
+              icon={<GridViewIcon />} 
+              label="Príspevky" 
+              iconPosition="start"
+            />
+            <Tab 
+              icon={<BookmarkIcon />} 
+              label="Uložené" 
+              iconPosition="start"
+            />
+          </Tabs>
+
+          <TabPanel value={tabValue} index={0}>
+            {renderPosts(user.posts)}
+          </TabPanel>
+          <TabPanel value={tabValue} index={1}>
+            {renderPosts(savedPosts)}
+          </TabPanel>
         </Paper>
 
         {/* Edit Profile Dialog */}
