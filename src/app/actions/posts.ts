@@ -5,6 +5,10 @@
 // Import Prisma client
 import { prisma } from "@/app/api/auth/[...nextauth]/prisma";
 import type { Prisma } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
+import { put } from '@vercel/blob';
+import { revalidatePath } from 'next/cache';
 
 type PostWithRelations = Prisma.PostGetPayload<{
   include: {
@@ -54,24 +58,70 @@ export const fetchPostsByUserId = async (userId: string): Promise<PostWithRelati
 };
 
 // Create a new post
-export const createPost = async (userId: string, imageUrl: string, caption?: string): Promise<PostWithRelations> => {
+export async function createPost(formData: FormData) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error('Not authenticated');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email }
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const image = formData.get('image') as File;
+  const caption = formData.get('caption') as string;
+
+  if (!image) {
+    throw new Error('No image provided');
+  }
+
   try {
-    const newPost = await prisma.post.create({
-      data: {
-        userId,
-        imageUrl,
-        caption,
-      },
-      include: {
-        user: true,
-        likes: true,
-        comments: true,
-      },
+    // Upload image to Vercel Blob
+    const blob = await put(image.name, image, {
+      access: 'public',
     });
 
-    return newPost;
+    // Create post in database
+    const post = await prisma.post.create({
+      data: {
+        imageUrl: blob.url,
+        caption,
+        userId: user.id,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          }
+        },
+        likes: true,
+        comments: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
+      }
+    });
+
+    revalidatePath('/prispevok');
+    return post;
   } catch (error) {
-    console.error("Error creating post:", error);
-    throw new Error("Could not create post");
+    console.error('Error creating post:', error);
+    throw new Error('Failed to create post');
   }
-};
+}
